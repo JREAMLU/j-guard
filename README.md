@@ -1,2 +1,2 @@
-# jguard
-jgateway
+# j-guard
+j-gateway
