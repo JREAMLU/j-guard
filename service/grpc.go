@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/JREAMLU/j-kit/constant"
 	"github.com/micro/go-micro/client"
 	grpcClient "github.com/micro/go-plugins/client/grpc"
 )
 
 // Request grpc request
-func Request(ctx context.Context, logo, service, method, address string, request interface{}) (string, error) {
+func Request(ctx context.Context, logo, service, method, address string, request interface{}) ([]byte, error) {
 	grpc := grpcClient.NewClient()
 	req := grpc.NewRequest(service, method, request, client.WithContentType("application/json"))
 
@@ -23,13 +22,13 @@ func Request(ctx context.Context, logo, service, method, address string, request
 		err = grpc.Call(ctx, req, &response)
 	}
 	if err != nil {
-		return constant.EmptyStr, err
+		return nil, err
 	}
 
 	resp, err := response.MarshalJSON()
 	if err != nil {
-		return constant.EmptyStr, err
+		return nil, err
 	}
 
-	return string(resp), nil
+	return resp, nil
 }

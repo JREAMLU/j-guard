@@ -2,8 +2,10 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/JREAMLU/j-guard/config"
@@ -27,6 +29,18 @@ type GrpcReq struct {
 		Method  string      `json:"method"`
 		Request interface{} `json:"request"`
 	} `json:"req"`
+}
+
+// Respone respone
+type Respone struct {
+	Logo  string
+	Resp  []byte
+	Error error
+}
+
+// Respones respones
+type Respones struct {
+	Resp map[string]interface{}
 }
 
 // NewGuardController new hello
@@ -54,25 +68,20 @@ func (g *GuardController) Grpc(c *gin.Context) {
 		return
 	}
 
-	grpcRequest(c.Request.Context(), reqs)
+	res := grpcRequest(c.Request.Context(), reqs, g.config.Guard.Timeout)
 
-	var resp struct {
-		Name string
+	resps := &Respones{
+		Resp: res,
 	}
-	resp.Name = "LUj"
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, resps)
 }
 
-// Respone respone
-type Respone struct {
-	Logo  string
-	Resp  string
-	Error error
-}
-
-func grpcRequest(ctx context.Context, reqs GrpcReq) {
+func grpcRequest(ctx context.Context, reqs GrpcReq, timeout int64) map[string]interface{} {
 	respChan := make(chan *Respone, len(reqs.Req))
+	resps := make(map[string]interface{})
+	var rsp interface{}
+	var mutex sync.Mutex
 
 	// service.Request(ctx, req.Logo, req.Service, req.Method, req.Address, req.Request)
 	for _, req := range reqs.Req {
@@ -89,10 +98,23 @@ func grpcRequest(ctx context.Context, reqs GrpcReq) {
 	for i := 0; i < len(reqs.Req); i++ {
 		select {
 		case resp := <-respChan:
-			fmt.Println("++++++++++++:resp ", resp)
-		case <-time.After(1000 * time.Millisecond):
-			fmt.Println("++++++++++++: 超时")
-			return
+			if resp.Error != nil {
+				// @TODO log trace
+				return resps
+			}
+			err := json.Unmarshal(resp.Resp, &rsp)
+			if err != nil {
+				// @TODO log trace
+				return resps
+			}
+			mutex.Lock()
+			resps[resp.Logo] = rsp
+			mutex.Unlock()
+
+		case <-time.After(time.Duration(timeout) * time.Millisecond):
+			return resps
 		}
 	}
+
+	return resps
 }

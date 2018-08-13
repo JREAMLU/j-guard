@@ -23,6 +23,14 @@ func Load() (*GuardConfig, error) {
 	// load parent config
 	config := &GuardConfig{}
 	err := util.LoadCustomConfig("10.200.202.35:8500", name, version, config)
+	if err != nil {
+		return nil, err
+	}
+
+	// set default
+	if config.Guard.Timeout == 0 {
+		config.Guard.Timeout = 3
+	}
 
 	return config, err
 }
