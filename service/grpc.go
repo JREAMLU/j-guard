@@ -10,6 +10,7 @@ import (
 
 // Request grpc request
 func Request(ctx context.Context, logo, service, method, address string, request interface{}) ([]byte, error) {
+	// @TODO tiqu chulai trace wrapper
 	grpc := grpcClient.NewClient()
 	req := grpc.NewRequest(service, method, request, client.WithContentType("application/json"))
 

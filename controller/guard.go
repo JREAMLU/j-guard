@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -68,7 +67,7 @@ func (g *GuardController) Grpc(c *gin.Context) {
 		return
 	}
 
-	res := grpcRequest(c.Request.Context(), reqs, g.config.Guard.Timeout)
+	res := g.grpcRequest(c.Request.Context(), reqs)
 
 	resps := &Respones{
 		Resp: res,
@@ -77,7 +76,7 @@ func (g *GuardController) Grpc(c *gin.Context) {
 	c.JSON(http.StatusOK, resps)
 }
 
-func grpcRequest(ctx context.Context, reqs GrpcReq, timeout int64) map[string]interface{} {
+func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[string]interface{} {
 	respChan := make(chan *Respone, len(reqs.Req))
 	resps := make(map[string]interface{})
 	var rsp interface{}
@@ -102,7 +101,7 @@ func grpcRequest(ctx context.Context, reqs GrpcReq, timeout int64) map[string]in
 				// @TODO log trace
 				return resps
 			}
-			err := json.Unmarshal(resp.Resp, &rsp)
+			err := g.json.Unmarshal(resp.Resp, &rsp)
 			if err != nil {
 				// @TODO log trace
 				return resps
@@ -111,7 +110,7 @@ func grpcRequest(ctx context.Context, reqs GrpcReq, timeout int64) map[string]in
 			resps[resp.Logo] = rsp
 			mutex.Unlock()
 
-		case <-time.After(time.Duration(timeout) * time.Millisecond):
+		case <-time.After(time.Duration(g.config.Guard.Timeout) * time.Millisecond):
 			return resps
 		}
 	}
