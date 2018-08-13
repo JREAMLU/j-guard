@@ -1,0 +1,12 @@
+[service]
+Name = "go.http.srv.guard"
+Version = "v1"
+RegisterTTL = 1
+RegisterInterval = 1
+
+[web]
+Host = "0.0.0.0"
+Port = 8888
+
+[guard]
+Timeout = 1000
