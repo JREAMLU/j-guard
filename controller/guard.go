@@ -2,11 +2,11 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/JREAMLU/j-gin/constant"
 	"github.com/JREAMLU/j-guard/config"
 	"github.com/JREAMLU/j-guard/service"
 
@@ -39,7 +39,9 @@ type Respone struct {
 
 // Respones respones
 type Respones struct {
-	Resp map[string]interface{}
+	Data       map[string]interface{}
+	StatusCode int64
+	Message    string
 }
 
 // NewGuardController new hello
@@ -55,25 +57,33 @@ func NewGuardController(conf *config.GuardConfig) *GuardController {
 // Grpc gateway grpc
 func (g *GuardController) Grpc(c *gin.Context) {
 	var reqs GrpcReq
+	resps := &Respones{}
+
 	raw, err := c.GetRawData()
 	if err != nil {
-		fmt.Println("++++++++++++: err", err)
+		resps.Message = err.Error()
+		resps.StatusCode = constant.SystemErrorCode
+		c.JSON(http.StatusBadRequest, resps)
 		return
+	}
+
+	// GetRawData buffed
+	if len(raw) == 0 {
+		raw = c.MustGet("raw").([]byte)
 	}
 
 	err = g.json.Unmarshal(raw, &reqs)
 	if err != nil {
-		fmt.Println("++++++++++++: err", err)
+		resps.Message = err.Error()
+		resps.StatusCode = constant.SystemErrorCode
+		c.JSON(http.StatusBadRequest, resps)
 		return
 	}
 
 	res := g.grpcRequest(c.Request.Context(), reqs)
+	resps.Data = res
 
-	resps := &Respones{
-		Resp: res,
-	}
-
-	c.JSON(http.StatusOK, resps)
+	c.JSON(http.StatusBadRequest, resps)
 }
 
 func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[string]interface{} {
