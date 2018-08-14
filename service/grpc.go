@@ -5,22 +5,19 @@ import (
 	"encoding/json"
 
 	"github.com/micro/go-micro/client"
-	grpcClient "github.com/micro/go-plugins/client/grpc"
 )
 
 // Request grpc request
 func Request(ctx context.Context, logo, service, method, address string, request interface{}) ([]byte, error) {
-	// @TODO tiqu chulai trace wrapper
-	grpc := grpcClient.NewClient()
-	req := grpc.NewRequest(service, method, request, client.WithContentType("application/json"))
+	req := microClient.NewRequest(service, method, request, client.WithContentType("application/json"))
 
 	var response json.RawMessage
 	var err error
 
 	if len(address) > 0 {
-		err = grpc.Call(ctx, req, &response, client.WithAddress(address))
+		err = microClient.Call(ctx, req, &response, client.WithAddress(address))
 	} else {
-		err = grpc.Call(ctx, req, &response)
+		err = microClient.Call(ctx, req, &response)
 	}
 	if err != nil {
 		return nil, err

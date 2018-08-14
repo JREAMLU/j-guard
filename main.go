@@ -19,10 +19,13 @@ func main() {
 
 // RunHTTPService run http service
 func RunHTTPService(conf *config.GuardConfig) {
-	_, g, t := http.NewHTTPService(conf.Config)
+	ms, g, t := http.NewHTTPService(conf.Config)
 
 	// init http client
 	service.InitHTTPClient(t)
+
+	// init micro client
+	service.InitMicroClient(ms)
 
 	g = router.GetRouters(g, conf)
 	g.Run(conf.Web.URL)

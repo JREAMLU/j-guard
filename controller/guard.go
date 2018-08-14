@@ -111,6 +111,7 @@ func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[str
 			mutex.Unlock()
 
 		case <-time.After(time.Duration(g.config.Guard.Timeout) * time.Millisecond):
+			// @TODO log trace
 			return resps
 		}
 	}
