@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/JREAMLU/j-gin/constant"
 	"github.com/JREAMLU/j-guard/config"
+	"github.com/JREAMLU/j-guard/constant"
 	"github.com/JREAMLU/j-guard/service"
 
+	"github.com/JREAMLU/j-kit/go-micro/util"
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -108,12 +109,12 @@ func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[str
 		select {
 		case resp := <-respChan:
 			if resp.Error != nil {
-				// @TODO log trace
+				util.TraceLog(ctx, resp.Error.Error())
 				return resps
 			}
 			err := g.json.Unmarshal(resp.Resp, &rsp)
 			if err != nil {
-				// @TODO log trace
+				util.TraceLog(ctx, err.Error())
 				return resps
 			}
 			mutex.Lock()
@@ -121,7 +122,7 @@ func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[str
 			mutex.Unlock()
 
 		case <-time.After(time.Duration(g.config.Guard.Timeout) * time.Millisecond):
-			// @TODO log trace
+			util.TraceLog(ctx, constant.GrpcConcurrentTimeout)
 			return resps
 		}
 	}
