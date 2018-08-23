@@ -1,6 +1,8 @@
 package config
 
-import "github.com/JREAMLU/j-kit/go-micro/util"
+import (
+	"github.com/JREAMLU/j-kit/go-micro/util"
+)
 
 const (
 	name    = "guard"
@@ -13,6 +15,11 @@ type GuardConfig struct {
 
 	Guard struct {
 		Timeout int64
+	}
+
+	Cache struct {
+		Expire int64
+		Size   int
 	}
 }
 
