@@ -10,11 +10,12 @@ import (
 	"github.com/JREAMLU/j-guard/config"
 	"github.com/JREAMLU/j-guard/constant"
 	"github.com/JREAMLU/j-guard/service"
-	"github.com/bluele/gcache"
 
 	"github.com/JREAMLU/j-kit/crypto"
 	"github.com/JREAMLU/j-kit/go-micro/util"
+	"github.com/bluele/gcache"
 	"github.com/gin-gonic/gin"
+	"github.com/golang/groupcache/singleflight"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -115,7 +116,6 @@ func (g *GuardController) getGCache(ctx context.Context, raw string) (interface{
 	return val, nil
 }
 
-// @TODO singleflight
 func (g *GuardController) setGCache(ctx context.Context, raw string, resp *Respones, expire string) {
 	if expire == "" {
 		return
@@ -131,7 +131,13 @@ func (g *GuardController) setGCache(ctx context.Context, raw string, resp *Respo
 		return
 	}
 
-	g.cache.SetWithExpire(hashKey, resp, time.Duration(expireInt64)*time.Second)
+	var sg singleflight.Group
+
+	fn := func() (interface{}, error) {
+		return nil, g.cache.SetWithExpire(hashKey, resp, time.Duration(expireInt64)*time.Second)
+	}
+
+	go sg.Do("cache", fn)
 }
 
 func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[string]interface{} {
