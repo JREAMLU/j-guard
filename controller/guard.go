@@ -3,17 +3,22 @@ package controller
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/JREAMLU/j-guard/config"
 	"github.com/JREAMLU/j-guard/constant"
 	"github.com/JREAMLU/j-guard/service"
+	"github.com/bluele/gcache"
 
+	"github.com/JREAMLU/j-kit/crypto"
 	"github.com/JREAMLU/j-kit/go-micro/util"
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 )
+
+const gcacheExpire = "Gcache-Expire"
 
 // GuardController guard controller
 type GuardController struct {
@@ -51,6 +56,7 @@ func NewGuardController(conf *config.GuardConfig) *GuardController {
 		Controller{
 			config: conf,
 			json:   jsoniter.ConfigCompatibleWithStandardLibrary,
+			cache:  gcache.New(conf.Cache.Size).LRU().Build(),
 		},
 	}
 }
@@ -73,6 +79,12 @@ func (g *GuardController) Grpc(c *gin.Context) {
 		raw = c.MustGet("raw").([]byte)
 	}
 
+	cacheRes, err := g.getGCache(c.Request.Context(), string(raw))
+	if err == nil {
+		c.JSON(http.StatusOK, cacheRes.(*Respones))
+		return
+	}
+
 	err = g.json.Unmarshal(raw, &reqs)
 	if err != nil {
 		resps.Message = err.Error()
@@ -84,7 +96,42 @@ func (g *GuardController) Grpc(c *gin.Context) {
 	res := g.grpcRequest(c.Request.Context(), reqs)
 	resps.Data = res
 
-	c.JSON(http.StatusBadRequest, resps)
+	g.setGCache(c.Request.Context(), string(raw), resps, c.Request.Header.Get(gcacheExpire))
+
+	c.JSON(http.StatusOK, resps)
+}
+
+func (g *GuardController) getGCache(ctx context.Context, raw string) (interface{}, error) {
+	hashKey, err := crypto.MD5(raw, true)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := g.cache.Get(hashKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return val, nil
+}
+
+// @TODO singleflight
+func (g *GuardController) setGCache(ctx context.Context, raw string, resp *Respones, expire string) {
+	if expire == "" {
+		return
+	}
+
+	expireInt64, err := strconv.ParseInt(expire, 10, 64)
+	if err != nil || expireInt64 == 0 {
+		return
+	}
+
+	hashKey, err := crypto.MD5(raw, true)
+	if err != nil {
+		return
+	}
+
+	g.cache.SetWithExpire(hashKey, resp, time.Duration(expireInt64)*time.Second)
 }
 
 func (g *GuardController) grpcRequest(ctx context.Context, reqs GrpcReq) map[string]interface{} {

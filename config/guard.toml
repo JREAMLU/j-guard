@@ -12,5 +12,5 @@ Port = 8888
 Timeout = 1000
 
 [cache]
-Expire = 10
+Expire = 10 # second
 Size = 100000
